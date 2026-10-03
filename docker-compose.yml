@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=cyberquest-prod-secret-2026
+      - JWT_SECRET=cyberquest-jwt-secret-2026
+    volumes:
+      - ./backend/cyberquest.db:/app/cyberquest.db
+
+  multi-stage-web-challenge:
+    build:
+      context: ./challenges/05_multi_stage_web
+      dockerfile: Dockerfile
+    ports:
+      - "5005:5005"
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
