@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export const getAuthToken = () => localStorage.getItem('cyberquest_token');
 export const setAuthToken = (token) => localStorage.setItem('cyberquest_token', token);
@@ -12,7 +12,10 @@ async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const baseUrl = API_BASE_URL.replace(/\/$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const response = await fetch(`${baseUrl}${cleanEndpoint}`, {
     ...options,
     headers,
   });
