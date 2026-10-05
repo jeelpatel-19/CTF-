@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Award, CheckCircle2, User, ShieldAlert } from 'lucide-react';
+import { Trophy, Award, CheckCircle2, User, ShieldAlert, Clock } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -26,6 +26,19 @@ export default function LeaderboardPage() {
     return <span style={{ fontFamily: "'Fira Code', monospace", fontWeight: 700, color: '#94a3b8' }}>#{rank}</span>;
   };
 
+  const formatSolveTime = (totalSeconds) => {
+    if (totalSeconds === null || totalSeconds === undefined || totalSeconds <= 0) return '00:00';
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    const pad = (num) => String(num).padStart(2, '0');
+    if (hrs > 0) {
+      return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    }
+    return `${pad(mins)}:${pad(secs)}`;
+  };
+
   return (
     <div className="page-container animate-fade-in" style={{ padding: '30px 20px 80px' }}>
       {/* Title */}
@@ -43,7 +56,7 @@ export default function LeaderboardPage() {
         </div>
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '10px' }}>Global Leaderboard</h1>
         <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto' }}>
-          Top cyber hackers ranked by points and total challenges solved.
+          Top cyber hackers ranked by points and fastest solve time.
         </p>
       </div>
 
@@ -59,6 +72,7 @@ export default function LeaderboardPage() {
                 <th style={{ width: '90px', textAlign: 'center' }}>Rank</th>
                 <th>Player</th>
                 <th style={{ textAlign: 'center' }}>Challenges Solved</th>
+                <th style={{ textAlign: 'center' }}>Total Time</th>
                 <th style={{ textAlign: 'right', paddingRight: '24px' }}>Points</th>
               </tr>
             </thead>
@@ -104,6 +118,23 @@ export default function LeaderboardPage() {
                   <td style={{ textAlign: 'center' }}>
                     <span className="badge badge-category" style={{ padding: '4px 10px', fontSize: '0.85rem' }}>
                       <CheckCircle2 size={13} /> {item.solves_count} Solved
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      fontFamily: "'Fira Code', monospace",
+                      fontSize: '0.88rem',
+                      color: '#60a5fa',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      padding: '3px 10px',
+                      borderRadius: '12px'
+                    }}>
+                      <Clock size={13} />
+                      {formatSolveTime(item.total_solve_time)}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '24px' }}>

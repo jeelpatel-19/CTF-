@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
 import Navbar from './components/Navbar';
@@ -24,7 +24,11 @@ export default function App() {
           <Navbar />
           <main className="main-content">
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <LandingPage />
+                </ProtectedRoute>
+              } />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               
@@ -34,15 +38,29 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/challenges" element={<ChallengesPage />} />
-              <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/challenges" element={
+                <ProtectedRoute>
+                  <ChallengesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/challenges/:id" element={
+                <ProtectedRoute>
+                  <ChallengeDetailPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/leaderboard" element={
+                <ProtectedRoute>
+                  <LeaderboardPage />
+                </ProtectedRoute>
+              } />
 
               <Route path="/admin" element={
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
               } />
+
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
           <Footer />

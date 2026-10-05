@@ -12,7 +12,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   return (
@@ -34,7 +34,7 @@ export default function Navbar() {
         justifyContent: 'space-between'
       }}>
         {/* Brand Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+        <Link to={user ? "/" : "/login"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <div style={{
             background: 'rgba(16, 185, 129, 0.15)',
             border: '1px solid #10b981',
@@ -57,20 +57,20 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Navigation Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link to="/" style={{
-            color: isActive('/') ? '#10b981' : '#94a3b8',
-            fontWeight: 500,
-            fontSize: '0.95rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            Home
-          </Link>
+        {/* Navigation Links - Only visible to authenticated users */}
+        {user && (
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <Link to="/" style={{
+              color: isActive('/') ? '#10b981' : '#94a3b8',
+              fontWeight: 500,
+              fontSize: '0.95rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              Home
+            </Link>
 
-          {user && (
             <Link to="/dashboard" style={{
               color: isActive('/dashboard') ? '#10b981' : '#94a3b8',
               fontWeight: 500,
@@ -82,50 +82,50 @@ export default function Navbar() {
               <LayoutDashboard size={16} />
               Dashboard
             </Link>
-          )}
 
-          <Link to="/challenges" style={{
-            color: isActive('/challenges') ? '#10b981' : '#94a3b8',
-            fontWeight: 500,
-            fontSize: '0.95rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <Shield size={16} />
-            Challenges
-          </Link>
-
-          <Link to="/leaderboard" style={{
-            color: isActive('/leaderboard') ? '#10b981' : '#94a3b8',
-            fontWeight: 500,
-            fontSize: '0.95rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <Trophy size={16} />
-            Leaderboard
-          </Link>
-
-          {user && user.role === 'admin' && (
-            <Link to="/admin" style={{
-              color: isActive('/admin') ? '#f59e0b' : '#fbbf24',
-              fontWeight: 600,
+            <Link to="/challenges" style={{
+              color: isActive('/challenges') ? '#10b981' : '#94a3b8',
+              fontWeight: 500,
               fontSize: '0.95rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(245, 158, 11, 0.1)',
-              padding: '5px 12px',
-              borderRadius: '6px',
-              border: '1px solid rgba(245, 158, 11, 0.3)'
+              gap: '6px'
             }}>
-              <Lock size={14} />
-              Admin Panel
+              <Shield size={16} />
+              Challenges
             </Link>
-          )}
-        </nav>
+
+            <Link to="/leaderboard" style={{
+              color: isActive('/leaderboard') ? '#10b981' : '#94a3b8',
+              fontWeight: 500,
+              fontSize: '0.95rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Trophy size={16} />
+              Leaderboard
+            </Link>
+
+            {user.role === 'admin' && (
+              <Link to="/admin" style={{
+                color: isActive('/admin') ? '#f59e0b' : '#fbbf24',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(245, 158, 11, 0.1)',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(245, 158, 11, 0.3)'
+              }}>
+                <Lock size={14} />
+                Admin Panel
+              </Link>
+            )}
+          </nav>
+        )}
 
         {/* User Status / Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

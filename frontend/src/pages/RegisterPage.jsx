@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Terminal, Lock, User, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
@@ -10,8 +10,20 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
+
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <div style={{ color: '#10b981', fontFamily: "'Fira Code', monospace" }}>[ Loading CyberQuest... ]</div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
