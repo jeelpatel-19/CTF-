@@ -27,21 +27,36 @@ app.register_blueprint(user_bp, url_prefix='/api/user')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
+
 # Static file downloads for challenge resources
 @app.route('/static/challenges/<path:filename>')
 def serve_challenge_file(filename):
     return send_from_directory(STATIC_FILES_DIR, filename, as_attachment=True)
 
+
 # Health Check Route
 @app.route('/api/health')
 def health_check():
-    return jsonify({'status': 'healthy', 'service': 'CyberQuest API', 'version': '1.0.0'})
+    return jsonify({
+        'status': 'healthy',
+        'service': 'CyberQuest API',
+        'version': '1.0.0'
+    })
+
 
 if __name__ == '__main__':
     # Initialize DB & Seed files automatically on startup if needed
     init_db()
     generate_challenge_files()
     seed_database()
-    
+
     print("Starting CyberQuest Flask Backend Server on http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+
+    # Render-safe startup:
+    # Disable Flask debug mode and automatic reloader
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=False,
+        use_reloader=False
+    )
