@@ -72,7 +72,27 @@ def init_db():
             user_id INTEGER NOT NULL,
             challenge_id INTEGER NOT NULL,
             points_earned INTEGER NOT NULL,
+            time_taken_seconds INTEGER,
             solved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (challenge_id) REFERENCES challenges (id) ON DELETE CASCADE,
+            UNIQUE(user_id, challenge_id)
+        )
+    ''')
+
+    # Migration: Add time_taken_seconds to solves if missing
+    cursor.execute("PRAGMA table_info(solves)")
+    solves_columns = [col['name'] for col in cursor.fetchall()]
+    if 'time_taken_seconds' not in solves_columns:
+        cursor.execute("ALTER TABLE solves ADD COLUMN time_taken_seconds INTEGER")
+
+    # Challenge Starts Table (Server-side challenge start time tracking)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS challenge_starts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            challenge_id INTEGER NOT NULL,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
             FOREIGN KEY (challenge_id) REFERENCES challenges (id) ON DELETE CASCADE,
             UNIQUE(user_id, challenge_id)
