@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, ExternalLink, Download, Lightbulb, Flag, CheckCircle2, AlertCircle, Shield, Award, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Download, Lightbulb, Flag, CheckCircle2, AlertCircle, Shield, Award, HelpCircle, Clock } from 'lucide-react';
 
 export default function ChallengeDetailPage() {
   const { id } = useParams();
@@ -15,6 +15,8 @@ export default function ChallengeDetailPage() {
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [unlockingHintId, setUnlockingHintId] = useState(null);
+
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const loadChallenge = async () => {
     try {
@@ -30,6 +32,83 @@ export default function ChallengeDetailPage() {
   useEffect(() => {
     loadChallenge();
   }, [id]);
+
+  useEffect(() => {
+    if (!challenge) return;
+
+    if (challenge.is_solved && challenge.time_taken_seconds != null) {
+      setElapsedSeconds(challenge.time_taken_seconds);
+      return;
+    }
+
+    if (!challenge.started_at) return;
+
+    const parseServerDate = (dateStr) => {
+      if (!dateStr) return new Date();
+      const formatted = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+      return new Date(formatted);
+    };
+
+    const startDate = parseServerDate(challenge.started_at);
+
+    const updateTimer = () => {
+      const now = new Date();
+      const diffSec = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / 1000));
+      setElapsedSeconds(diffSec);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [challenge]);
+
+  const formatDuration = (totalSeconds) => {
+    if (totalSeconds === null || totalSeconds === undefined || totalSeconds < 0) return '00:00';
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    
+    const pad = (num) => String(num).padStart(2, '0');
+    if (hrs > 0) {
+      return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    }
+    return `${pad(mins)}:${pad(secs)}`;
+  };
+
+  const getBackendOrigin = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    try {
+      const parsed = new URL(apiUrl);
+      return parsed.origin;
+    } catch {
+      return "http://localhost:5000";
+    }
+  };
+
+  const formatTargetUrl = (url) => {
+    if (!url) return '';
+    const origin = getBackendOrigin();
+    if (url.startsWith('http://localhost:5000')) {
+      return url.replace('http://localhost:5000', origin);
+    }
+    if (url.startsWith('/')) {
+      return `${origin}${url}`;
+    }
+    return url;
+  };
+
+  const formatFileUrl = (url) => {
+    if (!url) return '';
+    const origin = getBackendOrigin();
+    if (url.startsWith('http://localhost:5000')) {
+      return url.replace('http://localhost:5000', origin);
+    }
+    if (url.startsWith('/')) {
+      return `${origin}${url}`;
+    }
+    return url;
+  };
 
   const handleFlagSubmit = async (e) => {
     e.preventDefault();
@@ -127,6 +206,24 @@ export default function ChallengeDetailPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Server-synced Timer Badge */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: challenge.is_solved ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+              border: challenge.is_solved ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+              color: challenge.is_solved ? '#34d399' : '#60a5fa',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontFamily: "'Fira Code', monospace",
+              fontSize: '0.88rem',
+              fontWeight: 600
+            }}>
+              <Clock size={15} />
+              {challenge.is_solved ? `Solved in ${formatDuration(elapsedSeconds)}` : `Time: ${formatDuration(elapsedSeconds)}`}
+            </div>
+
             <div style={{ fontFamily: "'Fira Code', monospace", fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>
               ⚡ {challenge.points} POINTS
             </div>
@@ -161,20 +258,22 @@ export default function ChallengeDetailPage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
           {challenge.target_url && (
             <a
-              href={challenge.target_url}
+              href={formatTargetUrl(challenge.target_url)}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary"
               style={{ padding: '12px 20px' }}
             >
-              <ExternalLink size={18} /> Open Target Page ({challenge.target_url})
+              <ExternalLink size={18} /> Open Target Page ({formatTargetUrl(challenge.target_url)})
             </a>
           )}
 
           {challenge.file_url && (
             <a
-              href={challenge.file_url}
+              href={formatFileUrl(challenge.file_url)}
               download
+              target="_blank"
+              rel="noopener noreferrer"
               className="btn btn-secondary"
               style={{ padding: '12px 20px' }}
             >

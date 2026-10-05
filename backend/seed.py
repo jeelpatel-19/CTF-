@@ -92,7 +92,7 @@ def seed_database():
             'description': 'The server gives you everything you need, but not in the page.\n\nSomething important is travelling with every response.\n\nFind the hidden value and submit the flag.',
             'learning_objective': 'Learn how to inspect HTTP response headers using browser Developer Tools or cURL.',
             'flag': 'CTF{header_was_never_empty}',
-            'target_url': 'http://localhost:5000/api/challenges/target/forgotten-header',
+            'target_url': '/api/challenges/target/forgotten-header',
             'file_url': None,
             'hints': [
                 {'hint_text': 'A browser receives more than what your eyes can see.', 'penalty': 15}
@@ -120,7 +120,7 @@ def seed_database():
             'description': 'You are allowed to see your own room.\n\nBut the door accepts a number instead of a key.\n\nHow far does that number take you?',
             'learning_objective': 'Understand broken access control and identifier-based authorization flaws.',
             'flag': 'CTF{numbers_are_not_permissions}',
-            'target_url': 'http://localhost:5000/api/challenges/target/room?user_id=101',
+            'target_url': '/api/challenges/target/room?user_id=101',
             'file_url': None,
             'hints': [
                 {'hint_text': 'If changing one small thing changes who you are looking at, ask who is actually checking the lock.', 'penalty': 30}
@@ -134,7 +134,7 @@ def seed_database():
             'description': 'The page tells you almost nothing.\n\nPerhaps it was never designed to tell everyone everything.',
             'learning_objective': 'Discover unlinked application parameters through reconnaissance and source code analysis.',
             'flag': 'CTF{the_parameter_was_always_there}',
-            'target_url': 'http://localhost:5000/api/challenges/target/hidden-param',
+            'target_url': '/api/challenges/target/hidden-param',
             'file_url': None,
             'hints': [
                 {'hint_text': 'Developers sometimes leave doors for themselves. The door may not have a handle.', 'penalty': 40}

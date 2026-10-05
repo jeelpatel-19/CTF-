@@ -4,20 +4,37 @@ from auth_utils import token_required, decode_token
 
 challenges_bp = Blueprint('challenges', __name__)
 
+def get_backend_base_url():
+    scheme = request.headers.get('X-Forwarded-Proto', request.scheme)
+    host = request.headers.get('X-Forwarded-Host', request.host)
+    return f"{scheme}://{host}"
+
+def format_challenge_urls(c_dict):
+    base_url = get_backend_base_url()
+    
+    if c_dict.get('target_url'):
+        raw_target = c_dict['target_url']
+        if raw_target.startswith('http://localhost:5000'):
+            c_dict['target_url'] = raw_target.replace('http://localhost:5000', base_url)
+        elif raw_target.startswith('/'):
+            c_dict['target_url'] = f"{base_url}{raw_target}"
+
+    if c_dict.get('file_url'):
+        raw_file = c_dict['file_url']
+        if raw_file.startswith('http://localhost:5000'):
+            c_dict['file_url'] = raw_file.replace('http://localhost:5000', base_url)
+        elif raw_file.startswith('/'):
+            c_dict['file_url'] = f"{base_url}{raw_file}"
+
+    return c_dict
+
+
 @challenges_bp.route('', methods=['GET'])
 @challenges_bp.route('/', methods=['GET'])
+@token_required
 def get_challenges():
-    # Optional auth token check to return solve status
-    token = None
-    auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-    
-    current_user_id = None
-    if token:
-        payload = decode_token(token)
-        if payload:
-            current_user_id = payload.get('user_id')
+    user = request.current_user
+    current_user_id = user['id']
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -40,6 +57,7 @@ def get_challenges():
         # Get hint count
         hint_count = cursor.execute('SELECT COUNT(*) as count FROM hints WHERE challenge_id = ?', (c_dict['id'],)).fetchone()['count']
         c_dict['hint_count'] = hint_count
+        c_dict = format_challenge_urls(c_dict)
         result.append(c_dict)
 
     conn.close()
@@ -47,17 +65,10 @@ def get_challenges():
 
 
 @challenges_bp.route('/<int:challenge_id>', methods=['GET'])
+@token_required
 def get_challenge_detail(challenge_id):
-    token = None
-    auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-    
-    current_user_id = None
-    if token:
-        payload = decode_token(token)
-        if payload:
-            current_user_id = payload.get('user_id')
+    user = request.current_user
+    current_user_id = user['id']
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -75,13 +86,34 @@ def get_challenge_detail(challenge_id):
     
     # Check solve status
     c_dict['is_solved'] = False
+    c_dict['time_taken_seconds'] = None
     if current_user_id:
-        solve = cursor.execute('SELECT solved_at, points_earned FROM solves WHERE user_id = ? AND challenge_id = ?', 
+        solve = cursor.execute('SELECT solved_at, points_earned, time_taken_seconds FROM solves WHERE user_id = ? AND challenge_id = ?', 
                                (current_user_id, challenge_id)).fetchone()
         if solve:
             c_dict['is_solved'] = True
             c_dict['solved_at'] = solve['solved_at']
             c_dict['points_earned'] = solve['points_earned']
+            c_dict['time_taken_seconds'] = solve['time_taken_seconds']
+
+    # Server-side challenge start time tracking
+    start_rec = cursor.execute(
+        'SELECT started_at FROM challenge_starts WHERE user_id = ? AND challenge_id = ?',
+        (current_user_id, challenge_id)
+    ).fetchone()
+
+    if not start_rec and not c_dict['is_solved']:
+        cursor.execute(
+            'INSERT INTO challenge_starts (user_id, challenge_id) VALUES (?, ?)',
+            (current_user_id, challenge_id)
+        )
+        conn.commit()
+        start_rec = cursor.execute(
+            'SELECT started_at FROM challenge_starts WHERE user_id = ? AND challenge_id = ?',
+            (current_user_id, challenge_id)
+        ).fetchone()
+
+    c_dict['started_at'] = start_rec['started_at'] if start_rec else None
 
     # Get hints
     hints = cursor.execute('SELECT id, challenge_id, penalty FROM hints WHERE challenge_id = ?', (challenge_id,)).fetchall()
@@ -111,6 +143,7 @@ def get_challenge_detail(challenge_id):
         hint_list.append(h_dict)
 
     c_dict['hints'] = hint_list
+    c_dict = format_challenge_urls(c_dict)
     conn.close()
     return jsonify({'challenge': c_dict}), 200
 
@@ -173,10 +206,21 @@ def submit_flag(challenge_id):
 
     points_earned = max(0, challenge['points'] - unlocked_penalties)
 
-    # Insert into solves
+    # Calculate server-side elapsed time (server_current_time - server_start_time)
+    elapsed_row = cursor.execute('''
+        SELECT CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER) as elapsed
+        FROM challenge_starts
+        WHERE user_id = ? AND challenge_id = ?
+    ''', (user['id'], challenge_id)).fetchone()
+
+    time_taken_seconds = 0
+    if elapsed_row and elapsed_row['elapsed'] is not None:
+        time_taken_seconds = max(0, elapsed_row['elapsed'])
+
+    # Insert into solves with time_taken_seconds
     cursor.execute(
-        'INSERT INTO solves (user_id, challenge_id, points_earned) VALUES (?, ?, ?)',
-        (user['id'], challenge_id, points_earned)
+        'INSERT INTO solves (user_id, challenge_id, points_earned, time_taken_seconds) VALUES (?, ?, ?, ?)',
+        (user['id'], challenge_id, points_earned, time_taken_seconds)
     )
 
     # Update user points
@@ -195,7 +239,8 @@ def submit_flag(challenge_id):
         'success': True,
         'message': f'✓ Correct flag! You earned {points_earned} points.',
         'points_earned': points_earned,
-        'total_points': updated_user['points']
+        'total_points': updated_user['points'],
+        'time_taken_seconds': time_taken_seconds
     }), 200
 
 
