@@ -33,8 +33,8 @@ export default function ChallengesPage() {
     }
   }, [searchParams]);
 
-  const categories = ['All', 'Web Security', 'Cryptography', 'Forensics', 'Networking', 'Linux', 'OSINT'];
-  const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
+  const categories = ['All', 'Web Security', 'Forensics'];
+  const difficulties = ['All', 'Easy', 'Hard'];
   const statuses = ['All', 'Solved', 'Unsolved'];
 
   const filteredChallenges = challenges.filter(c => {
