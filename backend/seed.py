@@ -45,8 +45,10 @@ def generate_challenge_files():
     print(f"Generated Challenge 2 resource: {img_static_path}")
 
     # 2. Challenge 05 — The Last Layer (last_layer.txt)
-    # Layer 1 Base64 payload points to Challenge 5 debug endpoint
-    layer1_b64 = base64.b64encode(b"http://localhost:5005/api/v1/debug_status?token=dev_preview_2026").decode('utf-8')
+    # Layer 1 Base64 payload points to the debug endpoint on the main backend
+    # Using a relative path so format_challenge_urls() expands it to the correct host at request time.
+    # Students decode this and visit the URL shown on the platform.
+    layer1_b64 = base64.b64encode(b"/api/challenges/target/last-layer-hub").decode('utf-8')
     ch5_content = f"""CYBERQUEST RECOVERY ARTIFACT #7701
 ===================================
 TRANSMISSION DATA LAYER 1:
@@ -62,6 +64,7 @@ TRANSMISSION DATA LAYER 1:
     with open(os.path.join(ch5_dir, 'last_layer.txt'), 'w', encoding='utf-8') as f:
         f.write(ch5_content)
     print(f"Generated Challenge 5 resource: {last_layer_path}")
+
 
 
 def seed_database():
@@ -148,7 +151,7 @@ def seed_database():
             'description': "One layer gives you a clue.\n\nThe clue gives you another layer.\n\nStop when you think you've reached the end—but ask yourself why it was called the last layer.",
             'learning_objective': 'Execute a multi-stage security assessment combining file analysis, API discovery, and template injection.',
             'flag': 'CTF{one_layer_was_never_enough}',
-            'target_url': 'http://localhost:5005',
+            'target_url': '/api/challenges/target/last-layer-hub',
             'file_url': '/static/challenges/last_layer.txt',
             'hints': [
                 {'hint_text': "When something looks meaningless, don't immediately assume it is encrypted. Sometimes the first lock is only there to hide the second.", 'penalty': 50}

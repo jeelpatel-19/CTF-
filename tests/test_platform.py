@@ -23,10 +23,16 @@ class TestCyberQuestPlatform(unittest.TestCase):
         cls.client = app.test_client()
         app.testing = True
 
+        # Authenticate as admin first — /api/challenges requires a valid token
+        admin_login = cls.client.post('/api/auth/login', json={'account': 'admin', 'password': 'AdminPass123!'})
+        cls.admin_token = json.loads(admin_login.data)['token']
+        cls.admin_headers = {'Authorization': f'Bearer {cls.admin_token}'}
+
         # Fetch actual dynamic challenge IDs from API
-        res = cls.client.get('/api/challenges')
+        res = cls.client.get('/api/challenges', headers=cls.admin_headers)
         cls.challenges = json.loads(res.data)['challenges']
         cls.ch_map = {c['title']: c['id'] for c in cls.challenges}
+
 
     def test_01_health_check(self):
         res = self.client.get('/api/health')
@@ -43,7 +49,7 @@ class TestCyberQuestPlatform(unittest.TestCase):
         self.client.delete('/api/admin/users/clear-players', headers=admin_headers)
 
         # Verify public leaderboard is completely empty (no dummy users)
-        lb_res = self.client.get('/api/leaderboard')
+        lb_res = self.client.get('/api/leaderboard', headers=admin_headers)
         self.assertEqual(lb_res.status_code, 200)
         lb_data = json.loads(lb_res.data)['leaderboard']
         self.assertEqual(len(lb_data), 0)
@@ -64,7 +70,7 @@ class TestCyberQuestPlatform(unittest.TestCase):
         self.assertEqual(user_info['points'], 0)
 
         # 2. Leaderboard shows new player with 0 points
-        lb_res = self.client.get('/api/leaderboard')
+        lb_res = self.client.get('/api/leaderboard', headers=headers)
         self.assertEqual(lb_res.status_code, 200)
         lb_data = json.loads(lb_res.data)['leaderboard']
         self.assertEqual(len(lb_data), 1)
@@ -78,7 +84,7 @@ class TestCyberQuestPlatform(unittest.TestCase):
         self.assertTrue(json.loads(sub_res.data)['success'])
 
         # 4. Verify points updated to 100 on leaderboard
-        lb_res_after = self.client.get('/api/leaderboard')
+        lb_res_after = self.client.get('/api/leaderboard', headers=headers)
         lb_data_after = json.loads(lb_res_after.data)['leaderboard']
         self.assertEqual(lb_data_after[0]['points'], 100)
         self.assertEqual(lb_data_after[0]['solves_count'], 1)
@@ -115,8 +121,75 @@ class TestCyberQuestPlatform(unittest.TestCase):
         self.assertIn(b'CTF{the_parameter_was_always_there}', res_debug.data)
 
     def test_08_challenge_5_the_last_layer(self):
+        """Full multi-stage walkthrough for Challenge 5 — The Last Layer."""
+
+        # ── Stage 1: Download the artifact file ──────────────────────────────
         res_file = self.client.get('/static/challenges/last_layer.txt')
         self.assertEqual(res_file.status_code, 200)
+        content = res_file.data.decode('utf-8')
+        self.assertIn('CYBERQUEST RECOVERY ARTIFACT', content)
+
+        # Decode the Base64 Layer 1 payload from the artifact
+        import base64, re
+        # Require at least one letter in the match to avoid the ===... separator line
+        b64_match = re.search(r'([A-Za-z][A-Za-z0-9+/=]{19,})', content)
+        self.assertIsNotNone(b64_match, "No Base64 payload found in last_layer.txt")
+        decoded = base64.b64decode(b64_match.group(1)).decode('utf-8')
+        # Must NOT point at the old standalone server
+        self.assertNotIn('localhost:5005', decoded, "Clue still references localhost:5005!")
+        self.assertIn('/api/challenges/target/last-layer-hub', decoded)
+
+        # ── Stage 2: Developer hub landing page ──────────────────────────────
+        res_hub = self.client.get('/api/challenges/target/last-layer-hub')
+        self.assertEqual(res_hub.status_code, 200)
+        self.assertIn(b'CyberQuest Internal Developer Hub', res_hub.data)
+        self.assertIn(b'app.js', res_hub.data)
+
+        # ── Stage 3: JavaScript file exposes the hidden debug route ──────────
+        res_js = self.client.get('/api/challenges/target/last-layer-hub/static/js/app.js')
+        self.assertEqual(res_js.status_code, 200)
+        self.assertIn(b'DEBUG ROUTE', res_js.data)
+        self.assertIn(b'/api/v1/debug_status?token=dev_preview_2026', res_js.data)
+
+        # ── Stage 4a: Debug endpoint — invalid token returns 403 ─────────────
+        res_debug_bad = self.client.get('/api/challenges/api/v1/debug_status?token=wrong')
+        self.assertEqual(res_debug_bad.status_code, 403)
+
+        # ── Stage 4b: Debug endpoint — correct token reveals admin_portal ────
+        res_debug_ok = self.client.get(
+            '/api/challenges/api/v1/debug_status?token=dev_preview_2026'
+        )
+        self.assertEqual(res_debug_ok.status_code, 200)
+        debug_data = res_debug_ok.get_json()
+        self.assertEqual(debug_data.get('status'), 'healthy')
+        self.assertIn('admin_portal', debug_data)
+        self.assertIn('dev_preview_2026', debug_data.get('notice', ''))
+
+        # ── Stage 5a: Admin portal — missing access key returns 403 ──────────
+        res_portal_bad = self.client.get('/api/challenges/admin_portal')
+        self.assertEqual(res_portal_bad.status_code, 403)
+
+        # ── Stage 5b: Admin portal — valid access key shows the form ─────────
+        res_portal_ok = self.client.get(
+            '/api/challenges/admin_portal?access_key=dev_preview_2026'
+        )
+        self.assertEqual(res_portal_ok.status_code, 200)
+        self.assertIn(b'Internal Admin Report Preview', res_portal_ok.data)
+        self.assertIn(b'Default Security Summary', res_portal_ok.data)
+
+        # ── Stage 6a: SSTI proof — {{ 7 * 7 }} renders 49 ───────────────────
+        res_ssti_math = self.client.get(
+            '/api/challenges/admin_portal?access_key=dev_preview_2026&title=%7B%7B+7+*+7+%7D%7D'
+        )
+        self.assertEqual(res_ssti_math.status_code, 200)
+        self.assertIn(b'49', res_ssti_math.data)
+
+        # ── Stage 6b: {{ flag }} exfiltrates the real flag ───────────────────
+        res_ssti_flag = self.client.get(
+            '/api/challenges/admin_portal?access_key=dev_preview_2026&title=%7B%7B+flag+%7D%7D'
+        )
+        self.assertEqual(res_ssti_flag.status_code, 200)
+        self.assertIn(b'CTF{one_layer_was_never_enough}', res_ssti_flag.data)
 
     def test_09_admin_user_management(self):
         admin_login = self.client.post('/api/auth/login', json={'account': 'admin', 'password': 'AdminPass123!'})
@@ -146,7 +219,7 @@ class TestCyberQuestPlatform(unittest.TestCase):
         self.assertEqual(clear_res.status_code, 200)
 
         # Leaderboard is 0 players
-        lb_res = self.client.get('/api/leaderboard')
+        lb_res = self.client.get('/api/leaderboard', headers=admin_headers)
         lb_data = json.loads(lb_res.data)['leaderboard']
         self.assertEqual(len(lb_data), 0)
 
