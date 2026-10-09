@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db_connection
 from auth_utils import generate_token, token_required
+from config import JWT_EXPIRATION_HOURS
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -46,11 +47,19 @@ def register():
     token = generate_token(user['id'], user['username'], user['role'])
     user_dict = dict(user)
 
-    return jsonify({
+    response = jsonify({
         'message': 'Registration successful',
         'token': token,
         'user': user_dict
-    }), 201
+    })
+    response.set_cookie(
+        'auth_token', token,
+        httponly=True,
+        samesite='None',
+        secure=True,
+        max_age=JWT_EXPIRATION_HOURS * 3600
+    )
+    return response, 201
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -87,11 +96,31 @@ def login():
         'created_at': user['created_at']
     }
 
-    return jsonify({
+    response = jsonify({
         'message': 'Login successful',
         'token': token,
         'user': user_dict
-    }), 200
+    })
+    response.set_cookie(
+        'auth_token', token,
+        httponly=True,
+        samesite='None',
+        secure=True,
+        max_age=JWT_EXPIRATION_HOURS * 3600
+    )
+    return response, 200
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    response = jsonify({'message': 'Logged out successfully'})
+    response.set_cookie(
+        'auth_token', '',
+        httponly=True,
+        samesite='None',
+        secure=True,
+        expires=0
+    )
+    return response, 200
 
 
 @auth_bp.route('/me', methods=['GET'])
@@ -107,7 +136,11 @@ def me():
     
     # User rank
     leaderboard = cursor.execute('''
-        SELECT id, points FROM users ORDER BY points DESC, id ASC
+        SELECT u.id, u.points,
+               (SELECT COALESCE(SUM(s.time_taken_seconds), 0) FROM solves s WHERE s.user_id = u.id) as total_solve_time
+        FROM users u
+        WHERE u.role != 'admin'
+        ORDER BY u.points DESC, total_solve_time ASC, u.id ASC
     ''').fetchall()
     
     rank = 1

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api, getAuthToken, setAuthToken, removeAuthToken } from '../services/api';
+import { api } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -8,19 +8,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchCurrentUser = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await api.getMe();
       setUser(res.user);
     } catch (err) {
       console.error('Failed to load user', err);
-      removeAuthToken();
       setUser(null);
     } finally {
       setLoading(false);
@@ -33,27 +25,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (account, password) => {
     const res = await api.login(account, password);
-    setAuthToken(res.token);
     setUser(res.user);
     return res;
   };
 
   const register = async (username, email, password) => {
     const res = await api.register(username, email, password);
-    setAuthToken(res.token);
     setUser(res.user);
     return res;
   };
 
-  const logout = () => {
-    removeAuthToken();
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch (err) {
+      console.error(err);
+    }
     setUser(null);
   };
 
   const refreshUser = async () => {
-    if (getAuthToken()) {
-      await fetchCurrentUser();
-    }
+    await fetchCurrentUser();
   };
 
   return (

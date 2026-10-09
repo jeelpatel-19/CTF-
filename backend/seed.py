@@ -154,7 +154,11 @@ def seed_database():
             'target_url': '/api/challenges/target/last-layer-hub',
             'file_url': '/static/challenges/last_layer.txt',
             'hints': [
-                {'hint_text': "When something looks meaningless, don't immediately assume it is encrypted. Sometimes the first lock is only there to hide the second.", 'penalty': 50}
+                {'hint_text': "The downloaded file may contain encoded text. Decode it to discover the next destination.", 'penalty': 10},
+                {'hint_text': "The visible webpage is only one layer. Inspect its page source and find the files connected to it.", 'penalty': 10},
+                {'hint_text': "Open the linked JavaScript file and inspect its comments for another clue.", 'penalty': 10},
+                {'hint_text': "The diagnostic endpoint's response contains information that helps you find the next step.", 'penalty': 10},
+                {'hint_text': "Try a simple mathematical expression in the report title and observe how the server processes it.", 'penalty': 10}
             ]
         }
     ]

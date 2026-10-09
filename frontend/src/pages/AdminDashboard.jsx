@@ -478,11 +478,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   >
                     <option value="Web Security">Web Security</option>
-                    <option value="Cryptography">Cryptography</option>
                     <option value="Forensics">Forensics</option>
-                    <option value="Networking">Networking</option>
-                    <option value="Linux">Linux</option>
-                    <option value="OSINT">OSINT</option>
                   </select>
                 </div>
 
@@ -494,7 +490,6 @@ export default function AdminDashboard() {
                     onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
                   >
                     <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
                     <option value="Hard">Hard</option>
                   </select>
                 </div>

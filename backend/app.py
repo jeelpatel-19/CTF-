@@ -17,7 +17,15 @@ app = Flask(__name__, static_folder=STATIC_FILES_DIR)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # Enable CORS for frontend cross-origin requests
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "https://ctf-iota-lyart.vercel.app"
+        ]
+    }
+}, supports_credentials=True)
 
 # Register API blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')

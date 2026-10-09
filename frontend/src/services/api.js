@@ -1,14 +1,8 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-export const getAuthToken = () => localStorage.getItem('cyberquest_token');
-export const setAuthToken = (token) => localStorage.setItem('cyberquest_token', token);
-export const removeAuthToken = () => localStorage.removeItem('cyberquest_token');
-
 async function request(endpoint, options = {}) {
-  const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -17,6 +11,7 @@ async function request(endpoint, options = {}) {
 
   const response = await fetch(`${baseUrl}${cleanEndpoint}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
@@ -38,6 +33,7 @@ export const api = {
     request('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) }),
   login: (account, password) => 
     request('/auth/login', { method: 'POST', body: JSON.stringify({ account, password }) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
   getMe: () => request('/auth/me'),
 
   // User Dashboard
@@ -46,6 +42,7 @@ export const api = {
   // Challenges
   getChallenges: () => request('/challenges'),
   getChallengeDetail: (id) => request(`/challenges/${id}`),
+  startChallenge: (id) => request(`/challenges/${id}/start`, { method: 'POST' }),
   submitFlag: (id, flag) => request(`/challenges/${id}/submit`, { method: 'POST', body: JSON.stringify({ flag }) }),
 
   // Hints

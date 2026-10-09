@@ -108,15 +108,8 @@ def get_challenge_detail(challenge_id):
     ).fetchone()
 
     if not start_rec and not c_dict['is_solved']:
-        cursor.execute(
-            'INSERT INTO challenge_starts (user_id, challenge_id) VALUES (?, ?)',
-            (current_user_id, challenge_id)
-        )
-        conn.commit()
-        start_rec = cursor.execute(
-            'SELECT started_at FROM challenge_starts WHERE user_id = ? AND challenge_id = ?',
-            (current_user_id, challenge_id)
-        ).fetchone()
+        # Don't auto-start. Wait for explicit start from user.
+        start_rec = None
 
     c_dict['started_at'] = start_rec['started_at'] if start_rec else None
 
@@ -151,6 +144,42 @@ def get_challenge_detail(challenge_id):
     c_dict = format_challenge_urls(c_dict)
     conn.close()
     return jsonify({'challenge': c_dict}), 200
+
+
+@challenges_bp.route('/<int:challenge_id>/start', methods=['POST'])
+@token_required
+def start_challenge(challenge_id):
+    user = request.current_user
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    challenge = cursor.execute('SELECT * FROM challenges WHERE id = ?', (challenge_id,)).fetchone()
+    if not challenge:
+        conn.close()
+        return jsonify({'error': 'Challenge not found'}), 404
+
+    # Check if already started
+    start_rec = cursor.execute(
+        'SELECT started_at FROM challenge_starts WHERE user_id = ? AND challenge_id = ?',
+        (user['id'], challenge_id)
+    ).fetchone()
+
+    if not start_rec:
+        cursor.execute(
+            'INSERT INTO challenge_starts (user_id, challenge_id) VALUES (?, ?)',
+            (user['id'], challenge_id)
+        )
+        conn.commit()
+        start_rec = cursor.execute(
+            'SELECT started_at FROM challenge_starts WHERE user_id = ? AND challenge_id = ?',
+            (user['id'], challenge_id)
+        ).fetchone()
+
+    conn.close()
+    return jsonify({
+        'success': True,
+        'started_at': start_rec['started_at']
+    }), 200
 
 
 @challenges_bp.route('/<int:challenge_id>/submit', methods=['POST'])
@@ -503,7 +532,7 @@ def ch5_admin_portal():
         <div class="card">
             <h1>🛡️ Internal Admin Report Preview</h1>
             <p>Enter a custom title to dynamically preview the administrative executive summary header.</p>
-            <form method="GET" action="/admin_portal">
+            <form method="GET" action="">
                 <input type="hidden" name="access_key" value="{_CH5_TOKEN}">
                 <input type="text" name="title" placeholder="e.g., Weekly Threat Summary" value="{report_title}">
                 <button type="submit">Generate Preview</button>

@@ -28,6 +28,9 @@ def token_required(f):
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
+            
+        if not token:
+            token = request.cookies.get('auth_token')
 
         if not token:
             return jsonify({'error': 'Authentication token is missing'}), 401
@@ -55,6 +58,9 @@ def admin_required(f):
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
+            
+        if not token:
+            token = request.cookies.get('auth_token')
 
         if not token:
             return jsonify({'error': 'Authentication token is missing'}), 401

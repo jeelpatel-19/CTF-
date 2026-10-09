@@ -14,6 +14,7 @@ export default function ChallengeDetailPage() {
   const [flagInput, setFlagInput] = useState('');
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [unlockingHintId, setUnlockingHintId] = useState(null);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -140,6 +141,18 @@ export default function ChallengeDetailPage() {
     }
   };
 
+  const handleStartChallenge = async () => {
+    setStarting(true);
+    try {
+      await api.startChallenge(id);
+      await loadChallenge();
+    } catch (err) {
+      alert(err.message || 'Failed to start challenge');
+    } finally {
+      setStarting(false);
+    }
+  };
+
   const handleUnlockHint = async (hintId) => {
     if (!user) {
       alert('Please log in to reveal hints.');
@@ -256,7 +269,18 @@ export default function ChallengeDetailPage() {
 
         {/* Action Targets & Downloads */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-          {challenge.target_url && (
+          {!challenge.is_solved && !challenge.started_at && (
+            <button
+              onClick={handleStartChallenge}
+              className="btn btn-primary"
+              style={{ padding: '12px 20px', background: '#3b82f6', color: '#fff', border: 'none' }}
+              disabled={starting}
+            >
+              🚀 {starting ? 'Starting...' : 'Start Challenge'}
+            </button>
+          )}
+
+          {challenge.started_at && challenge.target_url && (
             <a
               href={formatTargetUrl(challenge.target_url)}
               target="_blank"
@@ -268,7 +292,7 @@ export default function ChallengeDetailPage() {
             </a>
           )}
 
-          {challenge.file_url && (
+          {challenge.started_at && challenge.file_url && (
             <a
               href={formatFileUrl(challenge.file_url)}
               download
@@ -283,106 +307,110 @@ export default function ChallengeDetailPage() {
         </div>
       </div>
 
-      {/* HINTS SECTION */}
-      <div className="cq-card" style={{ marginBottom: '30px' }}>
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b' }}>
-          <Lightbulb size={20} /> Challenge Hints
-        </h3>
+      {challenge.started_at && (
+        <>
+          {/* HINTS SECTION */}
+          <div className="cq-card" style={{ marginBottom: '30px' }}>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b' }}>
+              <Lightbulb size={20} /> Challenge Hints
+            </h3>
 
-        {challenge.hints && challenge.hints.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {challenge.hints.map((hint, idx) => (
-              <div key={hint.id} style={{
-                background: '#0d1322',
-                border: '1px solid #1e293b',
-                borderRadius: '10px',
-                padding: '18px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hint.is_unlocked ? '10px' : '0' }}>
-                  <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    💡 Hint {hint.index || idx + 1}
-                    {hint.penalty > 0 && (
-                      <span style={{ fontSize: '0.78rem', color: '#ef4444', fontFamily: "'Fira Code', monospace" }}>
-                        (-{hint.penalty} pts penalty)
-                      </span>
+            {challenge.hints && challenge.hints.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {challenge.hints.map((hint, idx) => (
+                  <div key={hint.id} style={{
+                    background: '#0d1322',
+                    border: '1px solid #1e293b',
+                    borderRadius: '10px',
+                    padding: '18px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hint.is_unlocked ? '10px' : '0' }}>
+                      <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        💡 Hint {hint.index || idx + 1}
+                        {hint.penalty > 0 && (
+                          <span style={{ fontSize: '0.78rem', color: '#ef4444', fontFamily: "'Fira Code', monospace" }}>
+                            (-{hint.penalty} pts penalty)
+                          </span>
+                        )}
+                      </div>
+
+                      {!hint.is_unlocked ? (
+                        <button
+                          onClick={() => handleUnlockHint(hint.id)}
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+                          disabled={unlockingHintId === hint.id}
+                        >
+                          {unlockingHintId === hint.id ? 'Unlocking...' : 'Reveal Hint'}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
+                          ✓ Unlocked
+                        </span>
+                      )}
+                    </div>
+
+                    {hint.is_unlocked && (
+                      <div style={{
+                        color: '#fbbf24',
+                        fontFamily: "'Fira Code', monospace",
+                        fontSize: '0.92rem',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        padding: '12px 14px',
+                        borderRadius: '6px',
+                        borderLeft: '3px solid #f59e0b',
+                        lineHeight: '1.5'
+                      }}>
+                        {hint.hint_text}
+                      </div>
                     )}
                   </div>
-
-                  {!hint.is_unlocked ? (
-                    <button
-                      onClick={() => handleUnlockHint(hint.id)}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 14px', fontSize: '0.85rem' }}
-                      disabled={unlockingHintId === hint.id}
-                    >
-                      {unlockingHintId === hint.id ? 'Unlocking...' : 'Reveal Hint'}
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
-                      ✓ Unlocked
-                    </span>
-                  )}
-                </div>
-
-                {hint.is_unlocked && (
-                  <div style={{
-                    color: '#fbbf24',
-                    fontFamily: "'Fira Code', monospace",
-                    fontSize: '0.92rem',
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    padding: '12px 14px',
-                    borderRadius: '6px',
-                    borderLeft: '3px solid #f59e0b',
-                    lineHeight: '1.5'
-                  }}>
-                    {hint.hint_text}
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>No hints available for this challenge.</p>
-        )}
-      </div>
-
-      {/* FLAG SUBMISSION FORM */}
-      <div className="cq-card">
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Flag size={20} color="#10b981" /> Submit Flag
-        </h3>
-
-        {submitResult && (
-          <div className={submitResult.success ? "alert alert-success" : "alert alert-error"}>
-            {submitResult.success ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-            <span style={{ fontWeight: 600 }}>{submitResult.message}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleFlagSubmit}>
-          <div className="form-group">
-            <label className="form-label">Enter Captured Flag</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="FLAG{...}"
-              value={flagInput}
-              onChange={(e) => setFlagInput(e.target.value)}
-              style={{ fontFamily: "'Fira Code', monospace", fontSize: '1rem', padding: '14px' }}
-              disabled={submitting || challenge.is_solved}
-            />
+            ) : (
+              <p style={{ color: '#64748b', fontSize: '0.9rem' }}>No hints available for this challenge.</p>
+            )}
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: '10px' }}
-            disabled={submitting || !flagInput.trim() || challenge.is_solved}
-          >
-            {challenge.is_solved ? '✓ Challenge Solved' : submitting ? 'Validating Flag...' : 'SUBMIT FLAG'}
-          </button>
-        </form>
-      </div>
+          {/* FLAG SUBMISSION FORM */}
+          <div className="cq-card">
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Flag size={20} color="#10b981" /> Submit Flag
+            </h3>
+
+            {submitResult && (
+              <div className={submitResult.success ? "alert alert-success" : "alert alert-error"}>
+                {submitResult.success ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                <span style={{ fontWeight: 600 }}>{submitResult.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleFlagSubmit}>
+              <div className="form-group">
+                <label className="form-label">Enter Captured Flag</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="FLAG{...}"
+                  value={flagInput}
+                  onChange={(e) => setFlagInput(e.target.value)}
+                  style={{ fontFamily: "'Fira Code', monospace", fontSize: '1rem', padding: '14px' }}
+                  disabled={submitting || challenge.is_solved}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: '10px' }}
+                disabled={submitting || !flagInput.trim() || challenge.is_solved}
+              >
+                {challenge.is_solved ? '✓ Challenge Solved' : submitting ? 'Validating Flag...' : 'SUBMIT FLAG'}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 }

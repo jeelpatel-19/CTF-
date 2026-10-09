@@ -23,7 +23,13 @@ def get_dashboard():
     remaining_challenges = max(0, total_challenges - total_solves)
 
     # Rank
-    all_users = cursor.execute('SELECT id FROM users ORDER BY points DESC, id ASC').fetchall()
+    all_users = cursor.execute('''
+        SELECT u.id, u.points,
+               (SELECT COALESCE(SUM(s.time_taken_seconds), 0) FROM solves s WHERE s.user_id = u.id) as total_solve_time
+        FROM users u
+        WHERE u.role != 'admin'
+        ORDER BY u.points DESC, total_solve_time ASC, u.id ASC
+    ''').fetchall()
     rank = 1
     for idx, u in enumerate(all_users, 1):
         if u['id'] == user['id']:
