@@ -478,10 +478,10 @@ def ch5_debug_status():
     return jsonify({
         'status': 'healthy',
         'environment': 'staging',
-        'admin_portal': '/admin_portal',
+        'admin_portal': '/api/challenges/admin_portal',
         'required_key': _CH5_TOKEN,
         'notice': (
-            f'Access {base_url}/admin_portal?access_key={_CH5_TOKEN} '
+            f'Access {base_url}/api/challenges/admin_portal?access_key={_CH5_TOKEN} '
             'for internal report preview generation.'
         )
     }), 200
